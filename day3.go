@@ -52,6 +52,37 @@ func day3() {
 	fmt.Printf("Conflicted square inches: %d\n", conflicts)
 }
 
+func day3Part2() {
+	// Represents the fabric. fabric[i][j] is ith column, jth row
+	var fabric [LEN][LEN]int
+	claims := getClaims()
+
+	// Keep track of conflicting claims with a simple slice
+	var conflicted []bool
+	conflicted = make([]bool, len(claims)+1)
+
+	// Mark used areas of fabric with ID of claim
+	// In case of conflict, record both claims as conflicting
+	for _, c := range claims {
+		for i := c.X; i < c.X+c.Width; i++ {
+			for j := c.Y; j < c.Y+c.Height; j++ {
+				if v := fabric[i][j]; v != 0 {
+					conflicted[v] = true
+					conflicted[c.ID] = true
+				}
+				fabric[i][j] = c.ID
+			}
+		}
+	}
+
+	// Now find the non-conflicting claims (should only be one!)
+	for idx, v := range conflicted {
+		if v == false {
+			fmt.Printf("Claim %d does not conflict!\n", idx)
+		}
+	}
+}
+
 // drawFabric "draws" the fabric up to width and height
 func drawFabric(fabric [LEN][LEN]uint8, width int, height int) {
 	for i := 0; i < height; i++ {
