@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
+	"strconv"
 )
 
 // LEN is the length of the fabric square
@@ -20,7 +22,7 @@ type Claim struct {
 }
 
 func day3() {
-	// the full set of fabric
+	// the full set of fabric. Fabric[i][j] is the ith column, jth row
 	// 0s are unused areas of fabric
 	var fabric [LEN][LEN]uint8
 
@@ -29,12 +31,14 @@ func day3() {
 
 	// Mark occupied areas by incrementing value
 	for _, c := range claims {
-		for i := c.X; i <= c.X+c.Width; i++ {
-			for j := c.Y; i <= c.Y+c.Height; j++ {
+		for i := c.X; i < c.X+c.Width; i++ {
+			for j := c.Y; j < c.Y+c.Height; j++ {
 				fabric[i][j]++
 			}
 		}
 	}
+
+	drawFabric(fabric, 80, 12)
 
 	// count number of conflicted square inches
 	conflicts := 0
@@ -48,8 +52,22 @@ func day3() {
 	fmt.Printf("Conflicted square inches: %d\n", conflicts)
 }
 
+// drawFabric "draws" the fabric up to width and height
+func drawFabric(fabric [LEN][LEN]uint8, width int, height int) {
+	for i := 0; i < height; i++ {
+		for j := 0; j < width; j++ {
+			if v := fabric[j][i]; v == 0 {
+				fmt.Print(".")
+			} else {
+				fmt.Print(fabric[j][i])
+			}
+		}
+		fmt.Print("\n")
+	}
+}
+
 func getClaims() []Claim {
-	const filename = "day3.example"
+	const filename = "day3.input"
 	var claims []Claim
 
 	file, err := os.Open(filename)
@@ -71,6 +89,31 @@ func getClaims() []Claim {
 
 func lineToClaim(line string) Claim {
 	var c Claim
-	// TODO: parse line into a Claim
+	// Claims are of the form #3 @ 5,5: 2x2
+	// #<claim ID> @ <dist-left>,<dist-right>: <width>x<height>
+	r := regexp.MustCompile("#(?P<ID>[[:digit:]]+) @ (?P<X>[[:digit:]]+),(?P<Y>[[:digit:]]+): (?P<Width>[[:digit:]]+)x(?P<Height>[[:digit:]]+)")
+	n1 := r.SubexpNames()
+	r2 := r.FindAllStringSubmatch(line, -1)[0]
+
+	md := map[string]string{}
+	for i, n := range r2 {
+		md[n1[i]] = n
+	}
+
+	if val, err := strconv.Atoi(md["ID"]); err == nil {
+		c.ID = val
+	}
+	if val, err := strconv.Atoi(md["X"]); err == nil {
+		c.X = val
+	}
+	if val, err := strconv.Atoi(md["Y"]); err == nil {
+		c.Y = val
+	}
+	if val, err := strconv.Atoi(md["Height"]); err == nil {
+		c.Height = val
+	}
+	if val, err := strconv.Atoi(md["Width"]); err == nil {
+		c.Width = val
+	}
 	return c
 }
