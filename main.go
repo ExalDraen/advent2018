@@ -8,6 +8,7 @@ func main() {
 	// day2()
 	// day2Part2()
 
-	day3()
-	day3Part2()
+	// day3()
+	// day3Part2()
+	day4()
 }
