@@ -28,39 +28,70 @@ type Event struct {
 	GuardID   int   // 0 means no guard
 }
 
-// Shift represents one guards' shift
-type Shift struct {
-	GuardID     int
-	StartTime   time.Time
-	sleepRanges []time.Duration
+// Interval represents a time interval
+type Interval struct {
+	StartTime time.Time
+	EndTime   time.Time
+}
+
+// Elapsed returns the duration between the end and start of the interval
+func (i Interval) Elapsed() time.Duration {
+	return i.EndTime.Sub(i.StartTime)
 }
 
 func day4() {
+	var laziestGuard int
+	var laziestMinute int
+	var sum, max int64
+	var sleepMins [60]int
+
 	e := getEvents()
-	for _, v := range e {
-		fmt.Printf("%q\n", v)
-	}
-	// parse event lines into a map of guard id: sleepRanges
-	// - loop over events
-	// - if new guard; if sleeping, add sleep period for previous guard. switch cur -> new guard. mark curTime = time
-	// - if wake up; sleeping = false. add sleep range: curTime until time. Update curTime = time
-	// - if sleep. sleeping = true. update curTime
+	// for _, v := range e {
+	// 	fmt.Printf("%+v\n", v)
+	// }
 
 	// find guard with most sleepMins:
 	// - loop over guards.
 	// - sum Mins for each sleep duration
 	// - if cur > max, update max
+	work := eventsToWorkLog(e)
+	for k, v := range work {
+		fmt.Printf("%v: %+v\n", k, v)
+
+		sum = 0
+		for _, elem := range v {
+			sum += elem.Elapsed().Nanoseconds()
+		}
+		if sum > max {
+			max = sum
+			laziestGuard = k
+		}
+	}
+	fmt.Printf("Laziest guard is: #%v\n", laziestGuard)
 
 	// find max sleep minute:
 	// slice[0-60]: int
 	// for each period:
 	// add being-> end to slice
 	// finally find max
-
+	for _, r := range work[laziestGuard] {
+		for i := r.StartTime.Minute(); i < r.EndTime.Minute(); i++ {
+			sleepMins[i]++
+		}
+	}
+	fmt.Printf("Amount of times slept on each minute: %v\n", sleepMins)
+	for idx, val := range sleepMins {
+		// inefficient, extra lookup. But I'm being lazy :)
+		if val > sleepMins[laziestMinute] {
+			laziestMinute = idx
+		}
+	}
+	fmt.Printf("Laziest minute is: %v\n", laziestMinute)
+	fmt.Printf("Laziest minute x Laziest Guard: %v\n", laziestGuard*laziestMinute)
 }
 
 func getEvents() []Event {
-	const filename = "day4.example"
+	const filename = "day4.input"
 	var events []Event
 
 	file, err := os.Open(filename)
@@ -121,8 +152,37 @@ func lineToEvent(text string) (e Event) {
 	return
 }
 
-func eventsToShifts(events []Event) []Shift {
-	var cur Shift
-	//
-	return nil
+// eventsToWorkLog transforms a list of events into a map of guard id: sleep ranges
+func eventsToWorkLog(events []Event) map[int]([]Interval) {
+	// parse event lines into a map of guard id: sleepRanges
+	// - loop over events
+	// - if new guard; if sleeping, add sleep period for previous guard. switch cur -> new guard. mark curTime = time
+	// - if wake up; sleeping = false. add sleep range: curTime until time. Update curTime = time
+	// - if sleep. sleeping = true. update curTime
+	var workLog map[int]([]Interval)
+	workLog = make(map[int][]Interval)
+	var sleeping bool
+	var curGuard int
+	var lastTime time.Time
+
+	lastTime = events[0].EventTime
+	for _, e := range events {
+		switch e.EventType {
+		case SLEEP:
+			sleeping = true
+		case WAKE:
+			if sleeping == true {
+				workLog[curGuard] = append(workLog[curGuard], Interval{StartTime: lastTime, EndTime: e.EventTime})
+			}
+			sleeping = false
+		case GUARD:
+			if sleeping == true {
+				workLog[curGuard] = append(workLog[curGuard], Interval{StartTime: lastTime, EndTime: e.EventTime})
+			}
+			curGuard = e.GuardID
+		}
+		lastTime = e.EventTime
+	}
+
+	return workLog
 }
