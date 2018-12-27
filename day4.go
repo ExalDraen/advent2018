@@ -56,7 +56,7 @@ func day4() {
 	// - if cur > max, update max
 	work := eventsToWorkLog(e)
 	for k, v := range work {
-		fmt.Printf("%v: %+v\n", k, v)
+		// fmt.Printf("%v: %+v\n", k, v)
 
 		sum = 0
 		for _, elem := range v {
@@ -86,6 +86,46 @@ func day4() {
 			laziestMinute = idx
 		}
 	}
+	fmt.Printf("Laziest minute is: %v\n", laziestMinute)
+	fmt.Printf("Laziest minute x Laziest Guard: %v\n", laziestGuard*laziestMinute)
+}
+
+func day4Part2() {
+	fmt.Println("Part Two")
+	var laziestGuard int
+	var laziestMinute int
+	var max int
+
+	e := getEvents()
+	// for _, v := range e {
+	// 	fmt.Printf("%+v\n", v)
+	// }
+
+	// find guard most asleep on one particular minute
+	// - loop over guards.
+	// - calculate "sleep spectrum" (#times asleep on given minute)
+	// - check if sleep spectrum max > current max.
+	// - if spectrum max > cur max, update cur max, update guard id
+	work := eventsToWorkLog(e)
+	for k, v := range work {
+		// fmt.Printf("%v: %+v\n", k, v)
+		var sleepMins [60]int
+
+		for _, elem := range v {
+			for i := elem.StartTime.Minute(); i < elem.EndTime.Minute(); i++ {
+				sleepMins[i]++
+			}
+		}
+
+		for idx, val := range sleepMins {
+			if val > max {
+				max = val
+				laziestMinute = idx
+				laziestGuard = k
+			}
+		}
+	}
+	fmt.Printf("Laziest guard is: #%v\n", laziestGuard)
 	fmt.Printf("Laziest minute is: %v\n", laziestMinute)
 	fmt.Printf("Laziest minute x Laziest Guard: %v\n", laziestGuard*laziestMinute)
 }
