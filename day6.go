@@ -1,7 +1,21 @@
 package main
 
+import (
+	"bufio"
+	"log"
+	"os"
+	"strconv"
+	"strings"
+)
+
 // DAY6INPUT is the filename for our input
-const DAY6INPUT = "day6.input"
+const DAY6INPUT = "day6.example"
+
+// Coord models a "Chronal" coordinate
+type Coord struct {
+	X int
+	Y int
+}
 
 func day6() {
 
@@ -25,4 +39,37 @@ func day6() {
 	//   if k.x/k.y on edge: skip
 	//   if v> max_v : update max_v, max_c
 	// print max_c
+}
+
+func getCoords() []Coord {
+	var coords []Coord
+
+	file, err := os.Open(DAY6INPUT)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		coords = append(coords, lineToCoord(scanner.Text()))
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+	return coords
+}
+
+func lineToCoord(line string) Coord {
+	var c Coord
+
+	components := strings.Split(line, ", ")
+	if val, err := strconv.Atoi(components[0]); err == nil {
+		c.X = val
+	}
+	if val, err := strconv.Atoi(components[1]); err == nil {
+		c.Y = val
+	}
+	return c
 }
