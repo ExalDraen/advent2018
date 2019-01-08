@@ -18,7 +18,18 @@ type Coord struct {
 }
 
 func day6() {
+	var area map[int](int) // maps Coord ID to its area
+	var grid [][]int
+	var minDist int
+	var minCoordID int
 
+	area = make(map[int](int))
+	coords, maxX, maxY := getCoords()
+
+	// create grid of size x+1 * y+1
+	for i := 0; i <= maxX; i++ {
+		grid = append(grid, make([]int, maxY))
+	}
 	// Outline:
 	// map( coord id -> area).
 	// Read & parse coords; track max x,y
@@ -33,16 +44,50 @@ func day6() {
 	// --- if distance (x,y) = c: set (x,y) to 0 and continue to next x,y
 	// -- (x,y) = min_c.id
 	// -- area[min_c.id] ++
-	//
+	for x, eX := range grid {
+		for y := range eX {
+			// prime minimal values
+			minCoordID = 0
+			minDist = manhattanDistance(x, y, coords[0])
+
+			// find closest coord to gridpoint
+			for i, c := range coords {
+				d := manhattanDistance(x, y, c)
+				switch {
+				case d < minDist:
+					// closer coord found; flag gridpoint as belonging to coord
+					minCoordID = i
+					minDist = d
+					eX[y] = i
+					continue
+				case d == minDist:
+					// gridpoint equidistant; discount
+					eX[y] = -1
+					continue
+				}
+			}
+			area[minCoordID]++
+		}
+	}
+
 	// Iterate through area map to find largest area:
 	// for k,v in area:
 	//   if k.x/k.y on edge: skip
 	//   if v> max_v : update max_v, max_c
 	// print max_c
+	var maxArea, maxCoordID int
+	for k, v := range area {
+		c := coords[k]
+		if v > maxArea {
+			v = maxArea
+			maxCoordID = k
+		}
+	}
 }
 
-func getCoords() []Coord {
+func getCoords() ([]Coord, int, int) {
 	var coords []Coord
+	var maxX, maxY int
 
 	file, err := os.Open(DAY6INPUT)
 	if err != nil {
@@ -52,13 +97,20 @@ func getCoords() []Coord {
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		coords = append(coords, lineToCoord(scanner.Text()))
+		c := lineToCoord(scanner.Text())
+		coords = append(coords, c)
+		if c.X > maxX {
+			maxX = c.X
+		}
+		if c.Y > maxY {
+			maxY = c.Y
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
-	return coords
+	return coords, maxX, maxY
 }
 
 func lineToCoord(line string) Coord {
@@ -72,4 +124,17 @@ func lineToCoord(line string) Coord {
 		c.Y = val
 	}
 	return c
+}
+
+// manhattanDistance calculates the Manhattan distance between (x,y) and a Coord
+func manhattanDistance(x int, y int, c Coord) int {
+	return Abs(x-c.X) + Abs(y-c.Y)
+}
+
+// Abs computes the absolute integer value
+func Abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }

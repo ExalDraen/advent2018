@@ -1,3 +1,5 @@
+package main
+
 // day 7 outline
 
 // struct AssemblyStep
@@ -18,4 +20,4 @@
 // -- if already executed, skip
 // -- if prereqs not in executionOrder, skip
 // -- pick earliest in alphabet
-// 
+//
