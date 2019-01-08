@@ -4,11 +4,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"strings"
 	"unicode"
 )
 
 // INPUT filename
 const INPUT = "day5.input"
+
+// ALPHABET represents all possible polymers to delete
+const ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 
 func day5() {
 	// read input
@@ -30,6 +34,40 @@ func day5() {
 	fmt.Printf("#Remaining elements: %v\n", len(result))
 }
 
+func day5Part2() {
+	// read input
+	content, err := ioutil.ReadFile(INPUT)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	candidates := []rune(ALPHABET)
+	minElem := candidates[0]
+	min := len(string(content))
+
+	// for each candidate rune:
+	// - strip candidate from input
+	// - react fully
+	// - check if shortest
+	for _, c := range candidates {
+		cleaned := strings.Map(func(r rune) rune {
+			if r == c || r == unicode.ToUpper(c) {
+				return -1
+			}
+			return r
+		}, string(content))
+		runes := []rune(cleaned)
+
+		result, _ := react(runes)
+		if len(result) < min {
+			min = len(result)
+			minElem = c
+		}
+	}
+
+	fmt.Printf("Removing %v is best; remaining length: %v\n", string(minElem), min)
+}
+
 // IsAntirune returns whether or not two runes are the same kind
 // but opposite "polarity" such that they "destroy" each other
 func IsAntirune(l rune, r rune) bool {
@@ -49,7 +87,7 @@ func react(input []rune) ([]rune, int) {
 			output = append(output, input[i])
 		}
 	}
-	fmt.Printf("Reacted %5d times\n", reactions)
+	// fmt.Printf("Reacted %5d times\n", reactions)
 	if reactions > 0 {
 		var r int
 		output, r = react(output)
