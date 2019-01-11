@@ -10,7 +10,7 @@ import (
 )
 
 // DAY6INPUT is the filename for our input
-const DAY6INPUT = "day6.example"
+const DAY6INPUT = "day6.input"
 
 // Coord models a "Chronal" coordinate
 type Coord struct {
@@ -28,14 +28,17 @@ func day6() {
 	// Read & parse coords; track max x,y
 	coords, maxX, maxY := getCoords()
 
-	// create 2d-array(int) for grid using max x, y; size= x+1, y+1
-	for i := 0; i <= maxY; i++ {
-		grid = append(grid, make([]int, maxX+1))
+	// create 2d-array(int) for grid:
+	// Grid contains (maxY+1) vectors of length (maxX+1)
+	// This means that that the first index is the y coordinate,
+	// the second one is the x coordinate.
+	for i := 0; i <= maxX; i++ {
+		grid = append(grid, make([]int, maxY+1))
 	}
 
 	// Iterate through each point in array and assign to the closest coord based on manhattan distance:
-	// for row in grid (y coord)
-	// - for col in row (x coord)
+	// for col in grid (y coord)
+	// - for row in row (x coord)
 	// -- min_dist = distance from (x,y) -> coords[0]
 	// -- min_c = coords[1]
 	// -- for c in coords:
@@ -47,14 +50,14 @@ func day6() {
 		for x := range col {
 			// Start by assuming the first coordinate is closest
 			minCoordID = 0
-			minDist = manhattanDistance(x, y, coords[0])
+			minDist = -1
 
 			// Skip first coord, since we've already used it above.
-			for i := 1; i < len(coords); i++ {
+			for i := 0; i < len(coords); i++ {
 				c := coords[i]
 				d := manhattanDistance(y, x, c)
 				switch {
-				case d < minDist:
+				case d < minDist || minDist == -1:
 					// closer coord found; flag gridpoint as belonging to coord
 					minCoordID = i
 					minDist = d
@@ -75,17 +78,17 @@ func day6() {
 	// of the grid don't count.
 	// Set such areas to 0.
 	for _, col := range grid {
-		// (0,y) column
+		// First row: (x, 0) column
 		area[col[0]] = 0
-		// (maxX, y) row
-		area[col[maxX]] = 0
+		// Last row: (x, maxY) row
+		area[col[maxY]] = 0
 	}
 	for _, eY := range grid[0] {
-		// (x,0) row
+		// First column: (0, y)
 		area[eY] = 0
 	}
-	for _, eY := range grid[maxY] {
-		// (x, max-Y) row
+	for _, eY := range grid[maxX] {
+		// Last column: (maxX, y)
 		area[eY] = 0
 	}
 
@@ -173,7 +176,7 @@ func drawGrid(grid [][]int, coords []Coord) {
 			}
 			for ic, c := range coords {
 				if x == c.Y && y == c.X {
-					val = rune('a') + rune(ic) - rune(32) // +32 means uppercase
+					val = rune('a') + rune(ic) - rune(32) // -32 means uppercase
 				}
 			}
 			fmt.Printf("%v", string(val))
