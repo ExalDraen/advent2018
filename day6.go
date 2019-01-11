@@ -12,10 +12,54 @@ import (
 // DAY6INPUT is the filename for our input
 const DAY6INPUT = "day6.input"
 
+// DAY6LIMIT is the max distance a region is allowed to be to pass
+const DAY6LIMIT = 10000
+
 // Coord models a "Chronal" coordinate
 type Coord struct {
 	X int
 	Y int
+}
+
+func day6Part2() {
+	var grid [][]int
+	var distSum int
+	var regionSize int
+
+	// Read & parse coords; track max x,y
+	coords, maxX, maxY := getCoords()
+
+	// create 2d-array(int) for grid:
+	// Grid contains (maxY+1) vectors of length (maxX+1)
+	// This means that that the first index is the y coordinate,
+	// the second one is the x coordinate.
+	for i := 0; i <= maxX; i++ {
+		grid = append(grid, make([]int, maxY+1))
+	}
+
+	// Iterate through each point in array and find distance to all cordinates
+	// for col in grid (y coord)
+	// - for x in row (x coord)
+	// -- for c in coords:
+	// --- val(x) = distance(x,y, c)
+	// --- Sum of distances += distance
+	// -- if (sum of distances) < limit => add to region
+	for y, col := range grid {
+		for x := range col {
+			distSum = 0
+			for _, c := range coords {
+				d := manhattanDistance(y, x, c)
+				// set grid point value to distance
+				col[x] = d
+				distSum += d
+			}
+			if distSum < DAY6LIMIT {
+				regionSize++
+			}
+		}
+	}
+
+	fmt.Printf("Size of region of points with dist < %v, %v \n", DAY6LIMIT, regionSize)
 }
 
 func day6() {
@@ -72,7 +116,7 @@ func day6() {
 		}
 	}
 	fmt.Printf("Areas of each coordinate before purge: %+v\n", area)
-	drawGrid(grid, coords)
+	// drawGrid(grid, coords)
 
 	// "Infinite" areas do not count. That is, areas that touch the edge
 	// of the grid don't count.
