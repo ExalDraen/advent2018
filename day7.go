@@ -5,7 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"sync"
 )
+
+const day7workers = 2
+const day7baseLength = 0
 
 func day7() {
 	steps := getSteps()
@@ -27,7 +32,7 @@ func getSteps() map[string]([]string) {
 
 	instr = make(map[string]([]string))
 
-	file, err := os.Open("day7.input")
+	file, err := os.Open("day7.example")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -98,10 +103,11 @@ func findCandidate(executionOrder []string, steps map[string]([]string)) string 
 			}
 		}
 	} else {
-		log.Fatal("Couldn't find an option!")
+		// log.Print("Couldn't find an option!")
+		return "-1"
 	}
 
-	fmt.Printf("Next step: %v\n", first)
+	// fmt.Printf("Next step: %v\n", first)
 	return first
 }
 
@@ -127,4 +133,129 @@ func subset(first, second []string) bool {
 		}
 	}
 	return true
+}
+
+func day7Part2() {
+
+	// make channel for ticks
+	quit := make(chan bool)
+
+	var lock sync.Mutex
+	tick := 0
+	steps := getSteps()
+	stepTotal := len(steps)
+	var execOrder []string
+	var actions []chan string
+
+	for i := 0; i < day7workers; i++ {
+		action := make(chan string)
+		actions = append(actions, action)
+		go work(steps, &execOrder, &lock, action, quit)
+	}
+
+	for {
+		// Send no work outstanding -> quit
+		// otherwise -> send tick
+		if len(execOrder) == stepTotal {
+			for i := 0; i < day7workers; i++ {
+				quit <- true
+			}
+			break
+		}
+		var finished []string // Don't need this if workers marks jobs done
+
+		fmt.Printf("\nTick %v: ", tick)
+		for i := 0; i < day7workers; i++ {
+			c := <-actions[i]
+			// Uppercase letters mean job is finishing
+			if c != "." && strings.ToUpper(c) == c {
+				finished = append(finished, c)
+			}
+			fmt.Printf(" %v", c)
+		}
+		// mark finished things as finished <<< do this in work stage
+		execOrder = append(execOrder, finished...)
+		tick++
+		if tick > 100 {
+			log.Fatal("Infinite loop?")
+		}
+	}
+	fmt.Printf("\nWork complete. Took %v ticks", tick)
+}
+
+// day 7 part two
+//
+// action status: "." = idle
+//                "X" = working on X
+//
+// map(step: status) stepStatus
+// mapLock Mutex
+//
+// get steps
+//
+// make channel(string) for action status
+// for i up to worker limit:
+// - go work(AllSteps, stepStatus, mapLock, channel)
+//
+// tick := 0
+// while true:
+// tick++
+// -  for i up to worker limit
+// - v, ok := <- ch
+// - if ok := print value
+// - if closed, break
+
+func work(steps map[string]([]string), executionOrder *[]string, stepLock *sync.Mutex, action chan string, quit chan bool) {
+	for {
+		// wait to receive tick
+
+		// wait to send data
+		select {
+		case <-quit:
+			return
+		default:
+			stepLock.Lock()
+			c := findCandidate(*executionOrder, steps)
+			if c == "-1" {
+				stepLock.Unlock()
+				action <- "."
+			} else {
+				delete(steps, c)
+				stepLock.Unlock()
+				// Work on step:
+				// Len -1: send "work in progress" -> lowercase letter
+				// Len: send "work completing" -> uppercase
+				for j := 0; j < workLength(c)-1; j++ {
+					action <- strings.ToLower(c)
+				}
+				action <- c
+				// update execOrder
+			}
+		}
+
+	}
+}
+
+// func work(AllSteps, stepStatus, mapLock, channel)
+// while true:
+// - if all steps done:
+// -- close(channel).
+// -- Return.
+// - lock mapLock
+// - findCandidate(stepStatus, AllSteps)
+// - if no candidate: unlock mapLock. channel <- idle
+// - if candidate:
+// -- mark as in progress
+// -- unlock mapLock
+// -- calculate work length
+// -- for i -> length of work
+// --- channel <- "working on stuff"
+//
+
+// calculates the length of work in "seconds"
+// A=1, B=2, ...
+func workLength(step string) (length int) {
+	r := []rune(step)[0]
+	length = day7baseLength + int(r) - 'A' + 1
+	return
 }
