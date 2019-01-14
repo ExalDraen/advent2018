@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"sync"
 )
 
@@ -135,105 +134,56 @@ func subset(first, second []string) bool {
 	return true
 }
 
+// day 7 part two
 func day7Part2() {
-
-	// make channel for ticks
-	quit := make(chan bool)
-
 	var lock sync.Mutex
 	tick := 0
 	steps := getSteps()
 	stepTotal := len(steps)
 	var execOrder []string
 	var actions []chan string
+	// channel for sending ticks to workers
+	var tickers []chan bool
 
 	for i := 0; i < day7workers; i++ {
 		action := make(chan string)
 		actions = append(actions, action)
-		go work(steps, &execOrder, &lock, action, quit)
+		ticker := make(chan bool) // true: go; false: stop
+		tickers = append(tickers, ticker)
+		go work(steps, &execOrder, &lock, action, ticker)
 	}
 
 	for {
+		// 3 phases:
+		// 1) start turn
+		// 2) work
+		// 3) update
 		// Send no work outstanding -> quit
-		// otherwise -> send tick
+		// otherwise -> send tick to have workers do work this tick
+		// This synchronization is necessary to make sure work done by
+		// workers is only counted on the next tick.
 		if len(execOrder) == stepTotal {
 			for i := 0; i < day7workers; i++ {
-				quit <- true
+				tickers[i] <- false
 			}
 			break
+		} else {
+			for i := 0; i < day7workers; i++ {
+				tickers[i] <- true
+			}
 		}
-		var finished []string // Don't need this if workers marks jobs done
 
-		fmt.Printf("\nTick %v: ", tick)
+		fmt.Printf("\nTick %5d: ", tick)
 		for i := 0; i < day7workers; i++ {
 			c := <-actions[i]
-			// Uppercase letters mean job is finishing
-			if c != "." && strings.ToUpper(c) == c {
-				finished = append(finished, c)
-			}
 			fmt.Printf(" %v", c)
 		}
-		// mark finished things as finished <<< do this in work stage
-		execOrder = append(execOrder, finished...)
 		tick++
 		if tick > 100 {
 			log.Fatal("Infinite loop?")
 		}
 	}
 	fmt.Printf("\nWork complete. Took %v ticks", tick)
-}
-
-// day 7 part two
-//
-// action status: "." = idle
-//                "X" = working on X
-//
-// map(step: status) stepStatus
-// mapLock Mutex
-//
-// get steps
-//
-// make channel(string) for action status
-// for i up to worker limit:
-// - go work(AllSteps, stepStatus, mapLock, channel)
-//
-// tick := 0
-// while true:
-// tick++
-// -  for i up to worker limit
-// - v, ok := <- ch
-// - if ok := print value
-// - if closed, break
-
-func work(steps map[string]([]string), executionOrder *[]string, stepLock *sync.Mutex, action chan string, quit chan bool) {
-	for {
-		// wait to receive tick
-
-		// wait to send data
-		select {
-		case <-quit:
-			return
-		default:
-			stepLock.Lock()
-			c := findCandidate(*executionOrder, steps)
-			if c == "-1" {
-				stepLock.Unlock()
-				action <- "."
-			} else {
-				delete(steps, c)
-				stepLock.Unlock()
-				// Work on step:
-				// Len -1: send "work in progress" -> lowercase letter
-				// Len: send "work completing" -> uppercase
-				for j := 0; j < workLength(c)-1; j++ {
-					action <- strings.ToLower(c)
-				}
-				action <- c
-				// update execOrder
-			}
-		}
-
-	}
 }
 
 // func work(AllSteps, stepStatus, mapLock, channel)
@@ -250,7 +200,35 @@ func work(steps map[string]([]string), executionOrder *[]string, stepLock *sync.
 // -- calculate work length
 // -- for i -> length of work
 // --- channel <- "working on stuff"
-//
+func work(steps map[string]([]string), executionOrder *[]string, stepLock *sync.Mutex, action chan string, ticker chan bool) {
+	for {
+		// The ticker channel is used to synchronize the start of the workers.
+		// Workers wait to receive tick before doing work.
+		// tick being false is a special case which means "exit"
+		proceed := <-ticker
+		if !proceed {
+			return
+		}
+		stepLock.Lock()
+		c := findCandidate(*executionOrder, steps)
+		if c == "-1" {
+			stepLock.Unlock()
+			action <- "."
+		} else {
+			delete(steps, c)
+			stepLock.Unlock()
+			// Work on step: do first tick of work, then loop to do remaining work
+			// this lets us wait for ticks inbetween
+			action <- c
+			for j := 0; j < workLength(c)-1; j++ {
+				<-ticker
+				action <- c
+			}
+			// Work complete; add it to completed steps
+			*executionOrder = append(*executionOrder, c)
+		}
+	}
+}
 
 // calculates the length of work in "seconds"
 // A=1, B=2, ...
