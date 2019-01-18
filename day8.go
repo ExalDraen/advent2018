@@ -37,6 +37,10 @@ func day8() {
 
 	sum := sumMeta(head)
 	fmt.Printf("Sum of metadata is: %v\n", sum)
+
+	val := findNodeValue(head)
+	fmt.Printf("Value of root: %v\n", val)
+
 	return
 }
 
@@ -78,4 +82,26 @@ func sumMeta(start node) (sum int) {
 		sum += m
 	}
 	return
+}
+
+func findNodeValue(n node) int {
+	var val int
+
+	// if no children, value is sum of metadata
+	if len(n.children) == 0 {
+		for _, m := range n.meta {
+			val += m
+		}
+		return val
+	}
+
+	// if children, value is sum of children
+	// indicated by metadata.
+	for _, m := range n.meta {
+		m-- // metadata is 1-index, but arrays are 0-indexed
+		if m < len(n.children) {
+			val += findNodeValue(n.children[m])
+		}
+	}
+	return val
 }
