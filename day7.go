@@ -179,27 +179,13 @@ func day7Part2() {
 			}
 		}
 		if tick > day7TickLimit {
-			log.Fatal("Infinite loop?")
+			log.Fatal("Exceeded tick limit. Infinite loop?")
 		}
 	}
 	fmt.Printf("\nWork complete. Took %v ticks", tick)
 	fmt.Printf("\nExecution order was: %v", execOrder)
 }
 
-// func work(AllSteps, stepStatus, mapLock, channel)
-// while true:
-// - if all steps done:
-// -- close(channel).
-// -- Return.
-// - lock mapLock
-// - findCandidate(stepStatus, AllSteps)
-// - if no candidate: unlock mapLock. channel <- idle
-// - if candidate:
-// -- mark as in progress
-// -- unlock mapLock
-// -- calculate work length
-// -- for i -> length of work
-// --- channel <- "working on stuff"
 func work(steps map[string]([]string), executionOrder *[]string, stepLock *sync.Mutex, action chan string, ticker chan bool) {
 	for {
 		stepLock.Lock()
@@ -219,7 +205,6 @@ func work(steps map[string]([]string), executionOrder *[]string, stepLock *sync.
 			// Do the last step of the work and update completed steps
 			action <- c
 			*executionOrder = append(*executionOrder, c)
-			//
 		}
 		// The ticker channel is used to synchronize the end of the workers.
 		// This is to make sure any updates to executionOrder are only taken into
