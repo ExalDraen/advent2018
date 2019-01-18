@@ -8,8 +8,9 @@ import (
 	"sync"
 )
 
-const day7workers = 2
-const day7baseLength = 0
+const day7workers = 5
+const day7baseLength = 60
+const day7TickLimit = 10000
 
 func day7() {
 	steps := getSteps()
@@ -31,7 +32,7 @@ func getSteps() map[string]([]string) {
 
 	instr = make(map[string]([]string))
 
-	file, err := os.Open("day7.example")
+	file, err := os.Open("day7.input")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -154,10 +155,15 @@ func day7Part2() {
 	}
 
 	for {
-		// 3 phases:
-		// 1) start turn
-		// 2) work
-		// 3) update
+		// 2 phases
+		// 1) receive work update
+		// 2) send tick to advance workers to next turn
+		fmt.Printf("\nTick %5d: ", tick)
+		for i := 0; i < day7workers; i++ {
+			c := <-actions[i]
+			fmt.Printf(" %v", c)
+		}
+		tick++
 		// Send no work outstanding -> quit
 		// otherwise -> send tick to have workers do work this tick
 		// This synchronization is necessary to make sure work done by
@@ -172,18 +178,12 @@ func day7Part2() {
 				tickers[i] <- true
 			}
 		}
-
-		fmt.Printf("\nTick %5d: ", tick)
-		for i := 0; i < day7workers; i++ {
-			c := <-actions[i]
-			fmt.Printf(" %v", c)
-		}
-		tick++
-		if tick > 100 {
+		if tick > day7TickLimit {
 			log.Fatal("Infinite loop?")
 		}
 	}
 	fmt.Printf("\nWork complete. Took %v ticks", tick)
+	fmt.Printf("\nExecution order was: %v", execOrder)
 }
 
 // func work(AllSteps, stepStatus, mapLock, channel)
@@ -202,13 +202,6 @@ func day7Part2() {
 // --- channel <- "working on stuff"
 func work(steps map[string]([]string), executionOrder *[]string, stepLock *sync.Mutex, action chan string, ticker chan bool) {
 	for {
-		// The ticker channel is used to synchronize the start of the workers.
-		// Workers wait to receive tick before doing work.
-		// tick being false is a special case which means "exit"
-		proceed := <-ticker
-		if !proceed {
-			return
-		}
 		stepLock.Lock()
 		c := findCandidate(*executionOrder, steps)
 		if c == "-1" {
@@ -217,15 +210,23 @@ func work(steps map[string]([]string), executionOrder *[]string, stepLock *sync.
 		} else {
 			delete(steps, c)
 			stepLock.Unlock()
-			// Work on step: do first tick of work, then loop to do remaining work
-			// this lets us wait for ticks inbetween
-			action <- c
+
+			// Do all but last step of the work
 			for j := 0; j < workLength(c)-1; j++ {
-				<-ticker
 				action <- c
+				<-ticker
 			}
-			// Work complete; add it to completed steps
+			// Do the last step of the work and update completed steps
+			action <- c
 			*executionOrder = append(*executionOrder, c)
+			//
+		}
+		// The ticker channel is used to synchronize the end of the workers.
+		// This is to make sure any updates to executionOrder are only taken into
+		// account on the next "tick"
+		proceed := <-ticker
+		if !proceed {
+			return
 		}
 	}
 }
