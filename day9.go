@@ -2,8 +2,97 @@ package main
 
 import "fmt"
 
-const day9Players = 478
-const day9MaxMarble = 71240
+const (
+	day9MaxMarble        = 71240
+	day9PartTwoMaxMarble = day9MaxMarble * 100
+	day9Players          = 478
+)
+
+// Node implements a node in a doubly linked list
+type Node struct {
+	Val  int
+	Prev *Node
+	Next *Node
+}
+
+// Insert inserts a new node after the current one
+func (n *Node) Insert(newNode *Node) {
+	next := n.Next
+	newNode.Next = next
+	newNode.Prev = n
+	n.Next = newNode
+	next.Prev = newNode
+}
+
+// Pop removes the node from the linked list and returns it
+func (n *Node) Pop() *Node {
+	prev := n.Prev
+	next := n.Next
+	prev.Next = next
+	next.Prev = prev
+	return n
+}
+
+// NewNode instantiates a new isolated node with value val
+func NewNode(val int) *Node {
+	n := &Node{
+		Val: val,
+	}
+	n.Next = n
+	n.Prev = n
+	return n
+}
+
+func printList(n *Node) {
+	cur := n
+	for {
+		fmt.Printf("%v ", cur.Val)
+		cur = cur.Next
+		if cur == n {
+			return
+		}
+	}
+}
+
+func day9PartTwo() {
+	scores := make(map[int]int)
+	circle := NewNode(0)
+	cur := circle
+	player := 0
+	for i := 1; i <= day9PartTwoMaxMarble; i++ {
+		// fmt.Print("\n")
+		// printList(cur)
+
+		// players take one turn each
+		player = (i % day9Players)
+
+		if i%23 == 0 {
+			scores[player] += i
+			// spool back 7 steps, remove marble, make marble
+			// immediately clockiwse of removed one new current
+			for j := 0; j < 7; j++ {
+				cur = cur.Prev
+			}
+			n := cur.Next
+			victim := cur.Pop()
+			scores[player] += victim.Val
+			cur = n
+		} else {
+			n := NewNode(i)
+			cur = cur.Next
+			cur.Insert(n)
+			cur = n
+		}
+	}
+	fmt.Printf("\nScores: %+v\n", scores)
+	max := 0
+	for _, s := range scores {
+		if s > max {
+			max = s
+		}
+	}
+	fmt.Printf("Max score: %+v\n", max)
+}
 
 // Insert value x into slice v at position i
 // shifting everything up by one (i.e. it's inserted "before" i)
