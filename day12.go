@@ -9,8 +9,10 @@ import (
 )
 
 const (
-	day12file   = "day12.input"
-	day12MaxGen = 20
+	day12file          = "day12.input"
+	day12MaxGen        = 100
+	day12PartTwoMaxGen = 100
+	day12FiftyBillion  = 50000000000
 )
 
 // Rule represents a generational surivival rule
@@ -34,13 +36,27 @@ func day12() {
 
 	// Sum alive pots. Note that we need to subtract the
 	// left padding to get the true pot number
+	sum := potSum(state)
+	fmt.Printf("\nSum of alive pot values after %v gen: %v", day12MaxGen, sum)
+}
+
+func day12PartTwo() {
+	state, rules := getState()
+	//states := make(map[string]bool)
+
 	var sum int
-	for i, v := range state {
-		if v == true {
-			sum += i - day12MaxGen*2
-		}
+	var delta int
+	for i := 1; i <= day12PartTwoMaxGen; i++ {
+		state = nextPotGen(state, rules)
+		val := potSum(state)
+		delta = val - sum
+		sum = val
+		fmt.Printf("\n Sum after %v: %5d delta: %5d", i, sum, delta)
 	}
-	fmt.Printf("Sum of alive pot values after %v gen: %v", day12MaxGen, sum)
+
+	fmt.Printf("\nSum of alive pot values after %v gen: %v", day12PartTwoMaxGen, sum)
+	ex := sum + (day12FiftyBillion-day12PartTwoMaxGen)*delta
+	fmt.Printf("\nExtrapolated sum after %v gen: %v", day12FiftyBillion, ex)
 }
 
 func getState() ([]bool, map[Rule]bool) {
@@ -76,7 +92,7 @@ func getState() ([]bool, map[Rule]bool) {
 func parseInitial(line string) []bool {
 	// left and right pad initial state with MaxGenx2 null values to account
 	// for potential growth
-	state := make([]bool, 2*day12MaxGen)
+	state := make([]bool, day12MaxGen)
 
 	comp := strings.Split(line, ": ")
 	for _, r := range comp[1] {
@@ -86,7 +102,7 @@ func parseInitial(line string) []bool {
 			state = append(state, false)
 		}
 	}
-	pad := make([]bool, 2*day12MaxGen)
+	pad := make([]bool, day12MaxGen*2)
 	state = append(state, pad...)
 	return state
 }
@@ -130,7 +146,7 @@ func printPotState(state []bool) {
 			fmt.Print(".")
 		}
 	}
-	fmt.Println()
+	fmt.Printf(" -- sum: %v\n", potSum(state))
 }
 
 func nextPotGen(cur []bool, rules map[Rule]bool) []bool {
@@ -146,4 +162,15 @@ func nextPotGen(cur []bool, rules map[Rule]bool) []bool {
 		}
 	}
 	return nextGen
+}
+
+func potSum(state []bool) (sum int) {
+	// Sum alive pots. Note that we need to subtract the
+	// left padding to get the true pot number
+	for i, v := range state {
+		if v == true {
+			sum += i - day12MaxGen
+		}
+	}
+	return
 }
